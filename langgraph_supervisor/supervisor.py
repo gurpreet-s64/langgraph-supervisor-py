@@ -401,16 +401,27 @@ def create_supervisor(
     if include_agent_name:
         model = with_agent_name(model, include_agent_name)
 
-    supervisor_agent = create_react_agent(
-        name=supervisor_name,
-        model=model,
-        tools=tool_node,
-        prompt=prompt,
-        state_schema=state_schema,
-        response_format=response_format,
-        pre_model_hook=pre_model_hook,
-        post_model_hook=post_model_hook,
-    )
+    # Create supervisor agent - temporarily remove post_model_hook for compatibility
+    supervisor_agent_kwargs = {
+        "name": supervisor_name,
+        "model": model,
+        "tools": tool_node,
+        "prompt": prompt,
+        "state_schema": state_schema,
+        "response_format": response_format,
+        "pre_model_hook": pre_model_hook,
+    }
+    
+    # Only add post_model_hook if it's supported (for compatibility)
+    try:
+        import inspect
+        create_react_agent_sig = inspect.signature(create_react_agent)
+        if "post_model_hook" in create_react_agent_sig.parameters:
+            supervisor_agent_kwargs["post_model_hook"] = post_model_hook
+    except:
+        pass
+    
+    supervisor_agent = create_react_agent(**supervisor_agent_kwargs)
 
     builder = StateGraph(state_schema, config_schema=config_schema)
     builder.add_node(supervisor_agent, destinations=tuple(agent_names) + (END,))
